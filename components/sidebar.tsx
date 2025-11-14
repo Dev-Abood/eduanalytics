@@ -171,6 +171,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
           </div>
         )}
       </div>
+      {/* starting new branch */}
     </aside>
   );
 }
