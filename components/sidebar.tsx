@@ -55,9 +55,11 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
         )}
       </div>
 
+      {/* Toggle Button (kept inside sidebar width) */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+        className="absolute right-0 top-20 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors translate-x-1/2"
+        style={{ transform: "translateX(50%)" }} // ensure it's still visually outside but doesn't affect layout width
       >
         {isCollapsed ? (
           <ChevronRight className="w-4 h-4 text-primary-foreground" />
@@ -66,7 +68,8 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
         )}
       </button>
 
-      <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+      {/* Navigation – no scrollbars */}
+      <nav className="flex-1 p-4 space-y-6">
         {navGroups.map((group, groupIndex) => (
           <div key={groupIndex}>
             {!isCollapsed && (
@@ -83,6 +86,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
                     href={href}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                      isCollapsed && "justify-center px-0",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -95,12 +99,14 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
                         isCollapsed && "mx-auto"
                       )}
                     />
+
                     {!isCollapsed && (
                       <span className="text-sm font-medium">{label}</span>
                     )}
 
+                    {/* Tooltip (only when collapsed, stays within sidebar width) */}
                     {isCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                      <div className="absolute left-1/2 -translate-x-1/2 -top-9 px-2 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                         {label}
                       </div>
                     )}
@@ -112,6 +118,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
         ))}
       </nav>
 
+      {/* Create Session Button */}
       <div className="p-4 border-t border-border">
         <Link
           href="/dashboard/sessions?create=true"
@@ -126,6 +133,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
         </Link>
       </div>
 
+      {/* User Info */}
       <div className="p-4 border-t border-border">
         {!isCollapsed ? (
           <div className="flex items-center gap-3">
