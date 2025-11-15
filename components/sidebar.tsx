@@ -8,9 +8,6 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  BarChart3,
-  Users,
-  Settings,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -171,6 +168,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
           </div>
         )}
       </div>
+      {/* starting new branch */}
     </aside>
   );
 }
