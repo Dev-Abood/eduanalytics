@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Users, Activity, Database } from "lucide-react";
+import ActiveSessionsTable from "@/components/admin/active-sessions-table";
 
 export default async function AdminPage() {
   const session = await getServerSession();
@@ -127,6 +128,11 @@ export default async function AdminPage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Active Sessions Table */}
+        <div className="mb-8">
+          <ActiveSessionsTable />
         </div>
 
         {/* User Details Card */}
