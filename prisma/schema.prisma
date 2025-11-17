@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - maps to Cognito users
+model User {
+  id        String   @id @default(cuid()) // Cognito sub (unique user ID)
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Onboarding fields
+  firstName   String?
+  lastName    String?
+  age         Int?
+  institution String?
+  position    String?
+  onboarded   Boolean  @default(false)
+  
+  // Relations
+  sessions Session[]
+  
+  @@map("users")
+}
+
+// Session model - stores analysis sessions
+model Session {
+  id        String   @id @default(cuid())
+  name      String
+  className String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // User relationship
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Session metadata
+  studentsCount Int      @default(0)
+  marksCount    Int      @default(0)
+  attendanceCount Int    @default(0)
+  subjects      String[] // Array of subjects
+  
+  // S3 references (for future implementation)
+  marksFileKey      String? // S3 key for marks CSV
+  attendanceFileKey String? // S3 key for attendance CSV
+  
+  // Analytics data (stored as JSON for flexibility)
+  analytics Json?
+  
+  @@map("sessions")
+  @@index([userId])
+}

@@ -1,5 +1,4 @@
-"use client";
-
+import { requireOnboarding } from "@/lib/auth-middleware";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,22 +9,41 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { Plus, BookOpen, BarChart3, Users } from "lucide-react";
+import { Plus, BookOpen, Users } from "lucide-react";
 import Sidebar from "@/components/sidebar";
+import { prisma } from "@/lib/prisma";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // This will redirect to onboarding if not completed, or to sign in if not authenticated
+  const { user } = await requireOnboarding();
+
+  // Get user's sessions from database
+  const sessions = await prisma.session.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const totalSessions = sessions.length;
+  const totalStudents = sessions.reduce((sum: any, s: any) => sum + s.studentsCount, 0);
+
   return (
     <>
       <div className="min-h-screen bg-background">
         <Header />
-        <Sidebar userName="Dr. Smith" />
-        <main className="pt-24 pb-12 px-6 lg:px-12">
+        <Sidebar 
+          userName={user.name || user.email || "User"}
+          userEmail={user.email}
+          userInitial={user.firstName?.charAt(0) || user.name?.charAt(0) || user.email?.charAt(0) || "U"}
+        />
+        <main className="pt-24 pb-12 px-6 lg:px-12 lg:ml-64">
           <div className="max-w-6xl mx-auto space-y-12">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-foreground/60">Welcome back, Dr. Smith</p>
+                <p className="text-foreground/60">
+                  Welcome back, {user.firstName || user.name || "User"}
+                </p>
               </div>
               <Link href="/dashboard/sessions?create=true">
                 <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
@@ -41,13 +59,13 @@ export default function DashboardPage() {
                 {
                   icon: BookOpen,
                   label: "Total Sessions",
-                  value: "0",
-                  description: "No sessions yet",
+                  value: totalSessions.toString(),
+                  description: totalSessions === 0 ? "No sessions yet" : `Analysis session${totalSessions === 1 ? "" : "s"}`,
                 },
                 {
                   icon: Users,
                   label: "Total Students Analyzed",
-                  value: "0",
+                  value: totalStudents.toString(),
                   description: "Across all sessions",
                 },
               ].map((stat, i) => (
@@ -72,25 +90,27 @@ export default function DashboardPage() {
             </div>
 
             {/* Call to Action */}
-            <Card className="border-2 border-dashed">
-              <CardContent className="pt-12 text-center space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-semibold">
-                    Create Your First Session
-                  </h3>
-                  <p className="text-foreground/60">
-                    Upload your marks and attendance CSV files to start
-                    analyzing student performance
-                  </p>
-                </div>
-                <Link href="/dashboard/sessions?create=true">
-                  <Button className="bg-primary hover:bg-primary/90 text-white gap-2 mt-5">
-                    <Plus className="w-4 h-4 m" />
-                    Create New Session
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+            {totalSessions === 0 && (
+              <Card className="border-2 border-dashed">
+                <CardContent className="pt-12 text-center space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-semibold">
+                      Create Your First Session
+                    </h3>
+                    <p className="text-foreground/60">
+                      Upload your marks and attendance CSV files to start
+                      analyzing student performance
+                    </p>
+                  </div>
+                  <Link href="/dashboard/sessions?create=true">
+                    <Button className="bg-primary hover:bg-primary/90 text-white gap-2 mt-5">
+                      <Plus className="w-4 h-4 m" />
+                      Create New Session
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Info Cards */}
             <div className="grid md:grid-cols-2 gap-6">

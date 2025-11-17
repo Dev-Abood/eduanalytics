@@ -12,12 +12,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 
 interface SidebarProps {
-  userName?: string;
+  userName: string;
+  userEmail?: string;
+  userInitial: string;
 }
 
-export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
+export default function Sidebar({ userName, userEmail, userInitial }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -52,11 +55,10 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
         )}
       </div>
 
-      {/* Toggle Button (kept inside sidebar width) */}
+      {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute right-0 top-20 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors translate-x-1/2"
-        style={{ transform: "translateX(50%)" }} // ensure it's still visually outside but doesn't affect layout width
       >
         {isCollapsed ? (
           <ChevronRight className="w-4 h-4 text-primary-foreground" />
@@ -65,7 +67,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
         )}
       </button>
 
-      {/* Navigation – no scrollbars */}
+      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-6">
         {navGroups.map((group, groupIndex) => (
           <div key={groupIndex}>
@@ -101,7 +103,7 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
                       <span className="text-sm font-medium">{label}</span>
                     )}
 
-                    {/* Tooltip (only when collapsed, stays within sidebar width) */}
+                    {/* Tooltip when collapsed */}
                     {isCollapsed && (
                       <div className="absolute left-1/2 -translate-x-1/2 -top-9 px-2 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                         {label}
@@ -136,16 +138,17 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-primary-foreground font-semibold text-sm">
-                {userName.charAt(0).toUpperCase()}
+                {userInitial.toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground">Logged in as</p>
-              <p className="text-sm font-medium text-foreground truncate">
+              <p className="text-sm font-medium text-foreground truncate" title={userName}>
                 {userName}
               </p>
             </div>
             <button
+              onClick={() => signOut({ callbackUrl: "/" })}
               className="text-muted-foreground hover:text-destructive transition-colors"
               title="Logout"
             >
@@ -154,12 +157,13 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center" title={userName}>
               <span className="text-primary-foreground font-semibold text-sm">
-                {userName.charAt(0).toUpperCase()}
+                {userInitial.toUpperCase()}
               </span>
             </div>
             <button
+              onClick={() => signOut({ callbackUrl: "/" })}
               className="text-muted-foreground hover:text-destructive transition-colors"
               title="Logout"
             >
@@ -168,7 +172,6 @@ export default function Sidebar({ userName = "Teacher" }: SidebarProps) {
           </div>
         )}
       </div>
-      {/* starting new branch */}
     </aside>
   );
 }

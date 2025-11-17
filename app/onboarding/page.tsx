@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,11 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2 } from 'lucide-react';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -25,6 +28,38 @@ export default function OnboardingPage() {
     institution: "",
     position: "",
   });
+
+  useEffect(() => {
+    async function checkOnboarding() {
+      if (status === "loading") return;
+      
+      if (status === "unauthenticated") {
+        router.push("/api/auth/signin?callbackUrl=/onboarding");
+        return;
+      }
+
+      if (session?.user?.id) {
+        try {
+          // Check if user already exists in database
+          const response = await fetch("/api/user/check");
+          const data = await response.json();
+          
+          if (data.exists && data.onboarded) {
+            // User already completed onboarding, redirect to dashboard
+            router.push("/dashboard");
+          } else {
+            // User can proceed with onboarding
+            setChecking(false);
+          }
+        } catch (error) {
+          console.error("Error checking user status:", error);
+          setChecking(false);
+        }
+      }
+    }
+
+    checkOnboarding();
+  }, [session, status, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -44,6 +79,7 @@ export default function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     // Validate form
     if (
@@ -53,23 +89,54 @@ export default function OnboardingPage() {
       !formData.institution ||
       !formData.position
     ) {
-      alert("Please fill in all fields");
+      setError("Please fill in all fields");
       setLoading(false);
       return;
     }
 
-    // Simulate API call to save onboarding data
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // Here you would normally call your AWS Cognito or backend API
-      // to save the onboarding data associated with the user
-      console.log("Onboarding data saved:", formData);
+      // Create user in database with onboarding data
+      const response = await fetch("/api/user/onboarding", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          age: parseInt(formData.age),
+          institution: formData.institution,
+          position: formData.position,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save onboarding data");
+      }
+
+      // Redirect to dashboard
       router.push("/dashboard");
     } catch (error) {
       console.error("Error saving onboarding data:", error);
+      setError(error instanceof Error ? error.message : "Failed to save your information. Please try again.");
       setLoading(false);
     }
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-background text-lg font-bold">EA</span>
+          </div>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 pt-20">
@@ -87,6 +154,13 @@ export default function OnboardingPage() {
               Complete your profile to get started with EduAnalytics
             </p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
