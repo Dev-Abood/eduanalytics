@@ -138,7 +138,7 @@ export default function Sidebar({ userName, userEmail, userInitial }: SidebarPro
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-primary-foreground font-semibold text-sm">
-                {userInitial.toUpperCase()}
+                A
               </span>
             </div>
             <div className="flex-1 min-w-0">
@@ -159,7 +159,7 @@ export default function Sidebar({ userName, userEmail, userInitial }: SidebarPro
           <div className="flex flex-col items-center gap-2">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center" title={userName}>
               <span className="text-primary-foreground font-semibold text-sm">
-                {userInitial.toUpperCase()}
+                A
               </span>
             </div>
             <button

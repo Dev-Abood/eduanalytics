@@ -1,13 +1,14 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { prisma } from "./prisma";
+import { authOptions } from "./auth-config";
 
 /**
  * Get the current authenticated user from the database
  * Returns null if not authenticated
  */
 export async function getCurrentUser() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   
   if (!session?.user?.id) {
     return null;
@@ -24,7 +25,7 @@ export async function getCurrentUser() {
  * Require authentication - redirects to sign in if not authenticated
  */
 export async function requireAuth() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   
   if (!session?.user) {
     redirect("/api/auth/signin");

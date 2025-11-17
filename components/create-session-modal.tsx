@@ -9,9 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Upload } from "lucide-react";
-import Papa from "papaparse";
-import { calculateClassAnalytics } from "@/lib/analytics";
 
 interface CreateSessionModalProps {
   isOpen: boolean;
@@ -27,78 +27,11 @@ export default function CreateSessionModal({
   const [marksFile, setMarksFile] = useState<File | null>(null);
   const [attendanceFile, setAttendanceFile] = useState<File | null>(null);
   const [sessionName, setSessionName] = useState("");
+  const [className, setClassName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const marksInputRef = useRef<HTMLInputElement>(null);
   const attendanceInputRef = useRef<HTMLInputElement>(null);
-
-  const parseCSV = (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true, // Convert numbers automatically
-        complete: (results: any) => {
-          const data = results.data.filter((row: any) =>
-            Object.values(row).some((v) => v && String(v).trim() !== "")
-          );
-          resolve(data);
-        },
-        error: (error: any) => reject(error),
-      });
-    });
-  };
-
-  const validateMarksData = (data: any[]): boolean => {
-    if (data.length === 0) {
-      setError("Marks file is empty");
-      return false;
-    }
-    const requiredFields = [
-      "student_id",
-      "student_name",
-      "class",
-      "subject",
-      "term",
-      "assessment_date",
-      "score",
-      "max_score",
-    ];
-    const firstRow = data[0];
-    const missingFields = requiredFields.filter(
-      (field) => !(field in firstRow)
-    );
-
-    if (missingFields.length > 0) {
-      setError(`Marks file missing columns: ${missingFields.join(", ")}`);
-      return false;
-    }
-    return true;
-  };
-
-  const validateAttendanceData = (data: any[]): boolean => {
-    if (data.length === 0) {
-      setError("Attendance file is empty");
-      return false;
-    }
-    const requiredFields = [
-      "student_id",
-      "student_name",
-      "class",
-      "date",
-      "status",
-    ];
-    const firstRow = data[0];
-    const missingFields = requiredFields.filter(
-      (field) => !(field in firstRow)
-    );
-
-    if (missingFields.length > 0) {
-      setError(`Attendance file missing columns: ${missingFields.join(", ")}`);
-      return false;
-    }
-    return true;
-  };
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -117,27 +50,8 @@ export default function CreateSessionModal({
     }
   };
 
-  // Helper to estimate JSON size in bytes
-  const estimateSize = (obj: any): number => {
-    return new Blob([JSON.stringify(obj)]).size;
-  };
-
-  // Compress data by removing unnecessary fields and optimizing
-  const compressData = (data: any[]): any[] => {
-    return data.map(row => {
-      const compressed: any = {};
-      for (const [key, value] of Object.entries(row)) {
-        // Skip null, undefined, and empty strings
-        if (value !== null && value !== undefined && value !== '') {
-          compressed[key] = value;
-        }
-      }
-      return compressed;
-    });
-  };
-
   const handleCreate = async () => {
-    if (!marksFile || !attendanceFile || !sessionName) {
+    if (!marksFile || !attendanceFile || !sessionName || !className) {
       setError("Please fill all fields and select both files");
       return;
     }
@@ -146,117 +60,43 @@ export default function CreateSessionModal({
     setError("");
 
     try {
-      // Parse CSV files
-      const marksData = await parseCSV(marksFile);
-      const attendanceData = await parseCSV(attendanceFile);
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("sessionName", sessionName);
+      formData.append("className", className);
+      formData.append("marksFile", marksFile);
+      formData.append("attendanceFile", attendanceFile);
 
-      // Validate data structure
-      if (
-        !validateMarksData(marksData) ||
-        !validateAttendanceData(attendanceData)
-      ) {
-        setIsProcessing(false);
-        return;
+      // Upload to server
+      const response = await fetch("/api/sessions", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create session");
       }
 
-      console.log("[Session] Parsed marks data:", marksData.length, "records");
-      console.log("[Session] Parsed attendance data:", attendanceData.length, "records");
+      console.log("Session created successfully:", data.session);
 
-      // Get class name and student count
-      const className = marksData[0]?.class || "Class";
-      const uniqueStudents = new Set(marksData.map((r: any) => r.student_id));
-
-      // Calculate analytics
-      const analytics = calculateClassAnalytics(marksData, attendanceData);
-      console.log("[Session] Analytics calculated");
-
-      // Create session metadata (lightweight)
-      const session = {
-        id: Date.now().toString(),
-        name: sessionName,
-        className,
-        createdAt: new Date().toISOString(),
-        studentsCount: uniqueStudents.size,
-        // Store basic stats instead of full data
-        stats: {
-          marksCount: marksData.length,
-          attendanceCount: attendanceData.length,
-          subjects: [...new Set(marksData.map((r: any) => r.subject))],
-        }
-      };
-
-      // Compress the data
-      const compressedMarks = compressData(marksData);
-      const compressedAttendance = compressData(attendanceData);
-
-      // Store session metadata only in main sessions list
-      const allSessions = JSON.parse(localStorage.getItem("sessions") || "[]");
-      localStorage.setItem(
-        "sessions",
-        JSON.stringify([session, ...allSessions])
-      );
-
-      // Try to store full data separately, with error handling
-      const sessionData = {
-        marks: compressedMarks,
-        attendance: compressedAttendance,
-        analytics,
-      };
-
-      const dataSize = estimateSize(sessionData);
-      console.log(`[Session] Data size: ${(dataSize / 1024 / 1024).toFixed(2)} MB`);
-
-      // Check if data is too large (localStorage limit is typically 5-10MB)
-      if (dataSize > 4.5 * 1024 * 1024) { // 4.5MB threshold
-        console.warn("[Session] Data too large for localStorage");
-        
-        // Store only essential data: analytics + sample of raw data
-        const limitedData = {
-          marks: compressedMarks.slice(0, 1000), // First 1000 records
-          attendance: compressedAttendance.slice(0, 1000),
-          analytics,
-          truncated: true,
-          originalSizes: {
-            marks: marksData.length,
-            attendance: attendanceData.length
-          }
-        };
-        
-        localStorage.setItem(
-          `session_${session.id}`,
-          JSON.stringify(limitedData)
-        );
-        
-        setError("Warning: Dataset is large. Only analytics and sample data stored. For full data analysis, consider exporting to CSV.");
-      } else {
-        // Store full compressed data
-        localStorage.setItem(
-          `session_${session.id}`,
-          JSON.stringify(sessionData)
-        );
-      }
-
-      console.log("[Session] Session created successfully:", session.id);
-
-      onSessionCreated(session);
+      // Reset form
       setSessionName("");
+      setClassName("");
       setMarksFile(null);
       setAttendanceFile(null);
-      
+
+      // Notify parent component
+      onSessionCreated(data.session);
+
+      // Close modal
+      onClose();
     } catch (error) {
-      console.error("[Session] Error processing files:", error);
-      
-      if (error instanceof Error && error.message.includes("quota")) {
-        setError(
-          "Storage quota exceeded. Your dataset is too large for browser storage. Please try with a smaller dataset or contact support for alternative solutions."
-        );
-      } else {
-        setError(
-          `Error processing files: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
-      }
+      console.error("Error creating session:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to create session"
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -275,30 +115,38 @@ export default function CreateSessionModal({
 
         <div className="space-y-4">
           {error && (
-            <div className={`${
-              error.includes("Warning") 
-                ? "bg-yellow-50 border-yellow-200 text-yellow-700" 
-                : "bg-red-50 border-red-200 text-red-700"
-            } border rounded-lg p-3 text-sm`}>
+            <div className="bg-red-50 border-red-200 text-red-700 border rounded-lg p-3 text-sm">
               {error}
             </div>
           )}
 
           {/* Session Name */}
           <div>
-            <label className="text-sm font-medium">Session Name</label>
-            <input
+            <Label className="text-sm font-medium">Session Name</Label>
+            <Input
               type="text"
               value={sessionName}
               onChange={(e) => setSessionName(e.target.value)}
               placeholder="e.g., Q1 2025 Analysis"
-              className="w-full mt-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+              className="mt-1"
+            />
+          </div>
+
+          {/* Class Name */}
+          <div>
+            <Label className="text-sm font-medium">Class Name</Label>
+            <Input
+              type="text"
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              placeholder="e.g., Class 10A"
+              className="mt-1"
             />
           </div>
 
           {/* Marks File */}
           <div>
-            <label className="text-sm font-medium block mb-2">Marks File</label>
+            <Label className="text-sm font-medium block mb-2">Marks File</Label>
             <div
               onClick={() => marksInputRef.current?.click()}
               className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-all duration-300"
@@ -336,9 +184,9 @@ export default function CreateSessionModal({
 
           {/* Attendance File */}
           <div>
-            <label className="text-sm font-medium block mb-2">
+            <Label className="text-sm font-medium block mb-2">
               Attendance File
-            </label>
+            </Label>
             <div
               onClick={() => attendanceInputRef.current?.click()}
               className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-all duration-300"
@@ -387,11 +235,11 @@ export default function CreateSessionModal({
             <Button
               onClick={handleCreate}
               disabled={
-                isProcessing || !marksFile || !attendanceFile || !sessionName
+                isProcessing || !marksFile || !attendanceFile || !sessionName || !className
               }
               className="flex-1 bg-accent hover:bg-accent/90 text-primary"
             >
-              {isProcessing ? "Processing..." : "Create Session"}
+              {isProcessing ? "Creating..." : "Create Session"}
             </Button>
           </div>
         </div>
