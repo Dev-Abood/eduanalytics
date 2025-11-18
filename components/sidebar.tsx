@@ -17,7 +17,7 @@ import { signOut } from "next-auth/react";
 interface SidebarProps {
   userName: string;
   userEmail?: string;
-  userInitial: string;
+  userInitial?: string;
 }
 
 export default function Sidebar({ userName, userEmail, userInitial }: SidebarProps) {
