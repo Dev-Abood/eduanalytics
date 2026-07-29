@@ -10,8 +10,6 @@ Transform raw student data into actionable insights. Upload marks and attendance
 
 ---
 
-![Landing page](images/landing.png)
-
 ## Overview
 
 **EduAnalytics** is a full-stack analytics platform for educators. Teachers create an analysis **session**, upload two CSV files — **marks** and **attendance** — and the platform immediately computes per-student and class-wide statistics, renders interactive charts, and flags students who are academically at risk. Every file is stored securely in **Amazon S3**, all metadata and computed analytics live in **PostgreSQL** (via Prisma), and authentication is handled end-to-end by **AWS Cognito** through NextAuth.
